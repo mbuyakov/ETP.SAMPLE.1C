@@ -1,0 +1,129 @@
+
+//Запись сообщения в очередь WebsphereMQ
+Процедура ПоместитьСообщениеВОчередьWMQЧерезNet(Данные)
+	//Указать здесь необходимую очередь и менеджер очередей
+	НазваниеМенеджераОчередей = "GU01QM";
+	НазваниеОчереди = "MOSOBLGAZ.APPLICATION_OUT";
+	НазваниеКанала = "CLNT.MOSOBLGAZ.SVRCN";
+	АдресПодключения = "etp3.sm-soft.ru(2424)";
+	Попытка
+		Wrapper = новый COMОбъект("NetObjectToIDispatch45");
+		ПараметрыПодключения = Wrapper.СоздатьОбъект("System.Collections.Hashtable");
+		MQC = Wrapper.ПолучитьТипИзСборки("IBM.WMQ.MQC","amqmdnet.dll");
+	Исключение	
+		Сообщить(" - Ошибка подключения библиотек: " + ОписаниеОшибки());
+		Возврат;	
+	КонецПопытки;
+
+	ПараметрыПодключения.Add(MQC.TRANSPORT_PROPERTY, MQC.TRANSPORT_MQSERIES_MANAGED);
+	ПараметрыПодключения.Add(MQC.CONNECT_OPTIONS_PROPERTY, MQC.MQCNO_RECONNECT_Q_MGR);
+	ПараметрыПодключения.Add(MQC.CONNECTION_NAME_PROPERTY, АдресПодключения);
+	ПараметрыПодключения.Add(MQC.CHANNEL_PROPERTY, НазваниеКанала);
+	
+	MQQueueManager = Wrapper.ПолучитьТипИзСборки("IBM.WMQ.MQQueueManager","amqmdnet.dll");
+	МенеджерОчередей = Wrapper.СоздатьОбъект(MQQueueManager,НазваниеМенеджераОчередей,ПараметрыПодключения);
+	Попытка
+		Очередь = МенеджерОчередей.AccessQueue(НазваниеОчереди, MQC.MQOO_INQUIRE + MQC.MQOO_OUTPUT + MQC.MQOO_FAIL_IF_QUIESCING);
+	Исключение
+		Сообщить(" - Ошибка создания менеджера очередей: " + ОписаниеОшибки());
+		Возврат;
+	КонецПопытки;
+	Попытка
+		MQPutMessageOptions = Wrapper.ПолучитьТипИзСборки("IBM.WMQ.MQPutMessageOptions","amqmdnet.dll");
+		ОпцииЗаписиСообщения = Wrapper.СоздатьОбъект(MQPutMessageOptions);
+	    ОпцииЗаписиСообщения.Options = MQC.MQPMO_NEW_MSG_ID;
+		
+		MQMessage = Wrapper.ПолучитьТипИзСборки("IBM.WMQ.MQMessage","amqmdnet.dll");
+		Сообщение = Wrapper.СоздатьОбъект(MQMessage);
+		КоличествоСообщенийВОчереди = Очередь.CurrentDepth;
+		Сообщить(" - Количество сообщений в очереди " + НазваниеОчереди +": "+КоличествоСообщенийВОчереди);
+		Сообщение.MessageId = MQC.MQMI_NONE;
+		Сообщение.Format = MQC.MQFMT_STRING;
+	    Сообщение.CharacterSet = MQC.CODESET_UTF;
+		Сообщение.WriteString(Данные);
+	    Очередь.Put(Сообщение, ОпцииЗаписиСообщения);
+		Сообщить(" - Отправлено сообщение: " + Данные);
+		Сообщение.ClearMessage();		
+		Сообщить(" - Сообщение записано в очередь " + НазваниеОчереди);
+	Исключение
+		Сообщить(" - Ошибка записи данных в очередь: " + ОписаниеОшибки());
+	КонецПопытки;
+	Если Очередь <> Null Тогда 
+		Очередь.Close();
+	КонецЕсли; 
+	Если МенеджерОчередей <> Null Тогда 
+		МенеджерОчередей.Disconnect();
+	КонецЕсли;	
+КонецПроцедуры
+
+//Функция получения сообщения из очереди WebsphereMQ 
+//Возвращает тело сообщения, в противном случае возвращает null;
+Функция ПолучитьСообщениеИзОчередиWMQЧерезNet()
+	//Указать здесь необходимую очередь и менеджер очередей
+	НазваниеМенеджераОчередей = "GU01QM";
+	НазваниеОчереди = "MOSOBLGAZ.APPLICATION_INC";
+	НазваниеКанала = "CLNT.MOSOBLGAZ.SVRCN";
+	АдресПодключения = "etp3.sm-soft.ru(2424)";
+	Попытка
+		Wrapper = новый COMОбъект("NetObjectToIDispatch45");
+		ПараметрыПодключения = Wrapper.СоздатьОбъект("System.Collections.Hashtable");
+		MQC = Wrapper.ПолучитьТипИзСборки("IBM.WMQ.MQC","amqmdnet.dll");
+	Исключение	
+		Сообщить(" - Ошибка подключения библиотек: " + ОписаниеОшибки());
+		Возврат Null;	
+	КонецПопытки;
+
+	ПараметрыПодключения.Add(MQC.TRANSPORT_PROPERTY, MQC.TRANSPORT_MQSERIES_MANAGED);
+	ПараметрыПодключения.Add(MQC.CONNECT_OPTIONS_PROPERTY, MQC.MQCNO_RECONNECT_Q_MGR);
+	ПараметрыПодключения.Add(MQC.CONNECTION_NAME_PROPERTY, АдресПодключения);
+	ПараметрыПодключения.Add(MQC.CHANNEL_PROPERTY, НазваниеКанала);
+	
+	MQQueueManager = Wrapper.ПолучитьТипИзСборки("IBM.WMQ.MQQueueManager","amqmdnet.dll");
+	МенеджерОчередей = Wrapper.СоздатьОбъект(MQQueueManager,НазваниеМенеджераОчередей,ПараметрыПодключения);
+	Попытка
+		Очередь = МенеджерОчередей.AccessQueue(НазваниеОчереди, MQC.MQOO_INPUT_AS_Q_DEF + MQC.MQOO_FAIL_IF_QUIESCING + MQC.MQOO_INQUIRE);
+	Исключение
+		Сообщить(" - Ошибка создания менеджера очередей: " + ОписаниеОшибки());
+		Возврат Null
+	КонецПопытки;
+	Данные = Null;
+	Попытка
+		MQGetMessageOptions = Wrapper.ПолучитьТипИзСборки("IBM.WMQ.MQGetMessageOptions","amqmdnet.dll");
+		ОпцииПолученияСообщения = Wrapper.СоздатьОбъект(MQGetMessageOptions);
+	    ОпцииПолученияСообщения.Options = MQC.MQGMO_WAIT + MQC.MQGMO_SYNCPOINT;
+	    ОпцииПолученияСообщения.WaitInterval = 5000;
+		
+		MQMessage = Wrapper.ПолучитьТипИзСборки("IBM.WMQ.MQMessage","amqmdnet.dll");
+		Сообщение = Wrapper.СоздатьОбъект(MQMessage);
+		КоличествоСообщенийВОчереди = Очередь.CurrentDepth;
+		Сообщить(" - Количество сообщений в очереди " + НазваниеОчереди +": "+КоличествоСообщенийВОчереди);
+	    Очередь.Get(Сообщение, ОпцииПолученияСообщения);
+		Сообщить(" - DataOffset: " + Сообщение.DataOffset);
+		Сообщить(" - DataLength: " + Сообщение.DataLength);
+		Сообщить(" - MessageLength: " + Сообщение.MessageLength);
+		Сообщить(" - OriginalLength: " + Сообщение.OriginalLength);
+		Сообщить(" - Offset: " + Сообщение.Offset);
+		Сообщить(" - MessageType: " + Сообщение.MessageType);
+		Данные = Сообщение.ReadString(Сообщение.DataLength);
+		Сообщить(" - Полученное сообщение: " + Данные);
+		Сообщение.ClearMessage();
+	    МенеджерОчередей.Commit();
+		Сообщить(" - Сообщение прочитано из очереди " + НазваниеОчереди);
+	Исключение
+		МенеджерОчередей.Backout();
+		Сообщить(" - Ошибка чтения данных из очереди: " + ОписаниеОшибки());
+	КонецПопытки;
+	Если Очередь <> Null Тогда 
+		Очередь.Close();
+	КонецЕсли; 
+	Если МенеджерОчередей <> Null Тогда 
+		МенеджерОчередей.Disconnect();
+	КонецЕсли;
+		
+	Возврат Данные;
+	
+КонецФункции
+
+//Пример использования
+МоеСообщение = ПолучитьСообщениеИЗОчередиWSMQ();
+ПоместитьСообщениеВОчередьWMQЧерезNet("Тестовое сообщение");
